@@ -4,3 +4,4 @@ mediapipe
 protobuf
 flask-socketio
 eventlet
+numpy
