@@ -1,5 +1,6 @@
 import os
 import cv2
+import numpy as np  # Add this line to import numpy
 import mediapipe as mp
 import webbrowser
 from flask import Flask, render_template, Response
