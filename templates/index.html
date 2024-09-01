@@ -9,10 +9,52 @@
 <body>
     <div class="container">
         <h1>Finger Detection Assistant</h1>
-        <div class="video-container">
-            <img src="{{ url_for('video_feed') }}" alt="Video Feed" id="video">
-        </div>
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
         <p>Show 1 finger to open YouTube, 2 fingers to open Google.</p>
     </div>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const socket = io();
+
+        // Access the device's webcam and start video stream
+        navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+            video.srcObject = stream;
+        });
+
+        // Capture video frames and send them to the server
+        function captureFrame() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const data = canvas.toDataURL('image/jpeg');
+            socket.emit('video_frame', dataURLToBlob(data));
+        }
+
+        // Convert dataURL to Blob
+        function dataURLToBlob(dataURL) {
+            const binary = atob(dataURL.split(',')[1]);
+            const array = [];
+            for (let i = 0; i < binary.length; i++) {
+                array.push(binary.charCodeAt(i));
+            }
+            return new Blob([new Uint8Array(array)], { type: 'image/jpeg' });
+        }
+
+        // Capture frames at regular intervals
+        setInterval(captureFrame, 100);
+
+        // Handle response from the server
+        socket.on('response_back', function (data) {
+            // Optionally, you can do something with the processed frame
+            // const img = new Image();
+            // img.src = 'data:image/jpeg;base64,' + btoa(new Uint8Array(data).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+            // document.body.appendChild(img);
+        });
+    </script>
 </body>
 </html>
