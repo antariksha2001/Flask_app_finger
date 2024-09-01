@@ -2,3 +2,5 @@ Flask
 opencv-python
 mediapipe
 protobuf
+flask-socketio
+eventlet
