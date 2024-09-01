@@ -1,10 +1,12 @@
-from flask import Flask, render_template, Response
+import os
 import cv2
 import mediapipe as mp
 import webbrowser
-import warnings
-warnings.filterwarnings('ignore', category=UserWarning)
+from flask import Flask, render_template, Response
+from flask_socketio import SocketIO, emit
+
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -20,30 +22,21 @@ def detect_fingers(frame):
             return finger_count
     return 0
 
-def gen_frames():
-    cap = cv2.VideoCapture(0)
-    while True:
-        success, frame = cap.read()
-        if not success:
-            break
-        finger_count = detect_fingers(frame)
-        if finger_count == 1:
-            webbrowser.open('https://www.youtube.com')
-        elif finger_count == 2:
-            webbrowser.open('https://www.google.com')
-
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+@socketio.on('video_frame')
+def handle_video_frame(data):
+    frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    finger_count = detect_fingers(frame)
+    if finger_count == 1:
+        webbrowser.open('https://www.youtube.com')
+    elif finger_count == 2:
+        webbrowser.open('https://www.google.com')
+    _, buffer = cv2.imencode('.jpg', frame)
+    emit('response_back', buffer.tobytes())
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/video_feed')
-def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
